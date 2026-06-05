@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+
+{% block title %}Action Items - MeetingMind AI{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h1 class="text-white display-font mb-1">Task Management</h1>
+        <p class="text-muted">Review, filter, and track action items extracted from your meeting recordings.</p>
+    </div>
+    <div class="col-md-4 text-md-end d-flex align-items-center justify-content-md-end mt-3 mt-md-0">
+        <div class="btn-group shadow-sm" role="group" aria-label="Task Filter">
+            <a href="{{ url_for('tasks.list_tasks', status='all') }}" class="btn {% if current_filter == 'all' %}btn-glow-secondary{% else %}btn-glass-outline{% endif %} px-3.5 py-2">
+                All
+            </a>
+            <a href="{{ url_for('tasks.list_tasks', status='pending') }}" class="btn {% if current_filter == 'pending' %}btn-glow-secondary{% else %}btn-glass-outline{% endif %} px-3.5 py-2">
+                Pending
+            </a>
+            <a href="{{ url_for('tasks.list_tasks', status='completed') }}" class="btn {% if current_filter == 'completed' %}btn-glow-secondary{% else %}btn-glass-outline{% endif %} px-3.5 py-2">
+                Completed
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Task List -->
+<div class="row justify-content-center">
+    <div class="col-12">
+        <div class="card glass-card shadow">
+            <div class="card-body p-4">
+                {% if action_items %}
+                    <ul class="list-group list-group-flush">
+                        {% for task in action_items %}
+                            <li class="list-group-item list-group-item-glass px-2 py-4">
+                                <div class="row align-items-start g-3">
+                                    <div class="col-auto">
+                                        <label class="action-checkbox-container mt-1">
+                                            <input type="checkbox" data-item-id="{{ task.id }}" {% if task.is_completed %}checked{% endif %}>
+                                            <span class="checkmark"></span>
+                                        </label>
+                                    </div>
+                                    <div class="col">
+                                        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-start">
+                                            <div class="pe-md-4">
+                                                <span class="action-text text-white fs-5" style="line-height: 1.4;">{{ task.content }}</span>
+                                                <div class="d-flex flex-wrap align-items-center mt-2.5 text-muted" style="font-size: 13px;">
+                                                    <span class="d-flex align-items-center text-info">
+                                                        <i class="fa-solid fa-link me-1.5" style="font-size: 10px;"></i>
+                                                        <a href="{{ url_for('meetings.detail', meeting_id=task.meeting.id) }}" class="text-info text-decoration-none fw-semibold">
+                                                            {{ task.meeting.title }}
+                                                        </a>
+                                                    </span>
+                                                    <span class="mx-2 d-none d-sm-inline">•</span>
+                                                    <span class="d-flex align-items-center mt-1 mt-sm-0">
+                                                        <i class="fa-regular fa-calendar me-1.5"></i>
+                                                        Assigned {{ task.created_at.strftime('%b %d, %Y') }}
+                                                    </span>
+                                                    {% if task.is_completed and task.completed_at %}
+                                                        <span class="mx-2 d-none d-sm-inline">•</span>
+                                                        <span class="d-flex align-items-center text-success mt-1 mt-sm-0">
+                                                            <i class="fa-solid fa-circle-check me-1.5"></i>
+                                                            Completed {{ task.completed_at.strftime('%b %d, %Y') }}
+                                                        </span>
+                                                    {% endif %}
+                                                </div>
+                                                <div class="d-flex flex-wrap align-items-center gap-2 mt-2.5">
+                                                    {% if task.assignee and task.assignee != 'Unassigned' %}
+                                                        <span class="badge badge-MM badge-MM-primary" style="font-size: 11px; padding: 4px 8px; text-transform: none;">
+                                                            <i class="fa-regular fa-user me-1"></i>{{ task.assignee }}
+                                                        </span>
+                                                    {% endif %}
+                                                    {% if task.due_date and task.due_date != 'Unassigned' %}
+                                                        <span class="badge badge-MM badge-MM-warning" style="font-size: 11px; padding: 4px 8px; text-transform: none; background: rgba(245, 158, 11, 0.06); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.15);">
+                                                            <i class="fa-regular fa-clock me-1"></i>{{ task.due_date }}
+                                                        </span>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                            <div class="mt-3 mt-md-0">
+                                                <span id="badge-task-{{ task.id }}" class="badge badge-MM {% if task.is_completed %}badge-MM-success{% else %}badge-MM-warning{% endif %} py-1.5 px-3">
+                                                    {% if task.is_completed %}Completed{% else %}Pending{% endif %}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <div class="text-center py-5 my-4">
+                        <i class="fa-solid fa-clipboard-list text-muted mb-3" style="font-size: 56px; opacity: 0.5;"></i>
+                        <h4 class="text-white">No Action Items Found</h4>
+                        <p class="text-muted">There are no action items matching the "{{ current_filter }}" filter.</p>
+                        {% if current_filter != 'all' %}
+                            <a href="{{ url_for('tasks.list_tasks', status='all') }}" class="btn btn-glass-outline btn-sm px-4 mt-2">
+                                Clear Filters
+                            </a>
+                        {% endif %}
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

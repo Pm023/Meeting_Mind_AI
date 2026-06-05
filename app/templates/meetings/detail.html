@@ -1,0 +1,376 @@
+{% extends "base.html" %}
+
+{% block title %}{{ meeting.title }} - MeetingMind AI{% endblock %}
+
+{% block content %}
+<!-- Back and Action Headers -->
+<div class="row align-items-center mb-4">
+    <div class="col-8">
+        <a href="{{ url_for('main.dashboard') }}" class="text-info text-decoration-none fw-semibold">
+            <i class="fa-solid fa-arrow-left me-2"></i>Back to Dashboard
+        </a>
+        <h1 class="text-white mt-2 mb-0 display-font">{{ meeting.title }}</h1>
+        <small class="text-muted">
+            <i class="fa-solid fa-calendar-day me-1.5"></i>Analyzed on {{ meeting.created_at.strftime('%B %d, %Y at %I:%M %p') }}
+        </small>
+    </div>
+    <div class="col-4 text-end">
+        <!-- Export Report Button -->
+        <a href="{{ url_for('meetings.export', meeting_id=meeting.id) }}" class="btn btn-glass-outline btn-sm me-2">
+            <i class="fa-solid fa-file-arrow-down text-info me-1.5"></i>Export Report
+        </a>
+        <!-- Delete Button and Modal trigger -->
+        <button class="btn btn-glass-outline btn-sm border-danger text-danger hover-bg-danger" data-bs-toggle="modal" data-bs-target="#deleteMeetingModal">
+            <i class="fa-solid fa-trash-can me-1.5"></i>Delete Meeting
+        </button>
+    </div>
+</div>
+
+<!-- Description Block (if present) -->
+{% if meeting.description %}
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card glass-card p-3 shadow-sm">
+            <div class="card-body py-1">
+                <h6 class="text-muted uppercase-font" style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">Meeting Objectives</h6>
+                <p class="text-light mb-0 fs-6">{{ meeting.description }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Media Player & AI Metrics -->
+<div class="row g-4 mb-4">
+    <div class="col-12">
+        <div class="card glass-card p-3 shadow-sm">
+            <div class="card-body py-2">
+                {% set filename_lower = meeting.filename.lower() %}
+                
+                {% if filename_lower.endswith(('.mp3', '.wav', '.m4a')) %}
+                    <h6 class="text-muted mb-2" style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">Audio Recording</h6>
+                    <div class="audio-player-wrapper">
+                        <!-- Secure Audio Route -->
+                        <audio controls preload="metadata">
+                            <source src="{{ url_for('meetings.serve_audio', filename=meeting.filename) }}" type="audio/mpeg">
+                            Your browser does not support the audio player.
+                        </audio>
+                    </div>
+                {% elif filename_lower.endswith(('.mp4', '.webm', '.avi', '.mov')) %}
+                    <h6 class="text-muted mb-2" style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">Video Recording</h6>
+                    <div class="audio-player-wrapper text-center">
+                        <video controls style="max-height: 400px; width: 100%; border-radius: 8px;" preload="metadata">
+                            <source src="{{ url_for('meetings.serve_audio', filename=meeting.filename) }}">
+                            Your browser does not support the video tag.
+                        </video>
+                    </div>
+                {% elif filename_lower.endswith(('.jpg', '.jpeg', '.png')) %}
+                    <h6 class="text-muted mb-2" style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">Whiteboard / Slide Snapshot</h6>
+                    <div class="text-center p-3" style="background: rgba(0, 0, 0, 0.2); border-radius: 12px; border: 1px solid var(--glass-border);">
+                        <a href="{{ url_for('meetings.serve_audio', filename=meeting.filename) }}" target="_blank">
+                            <img src="{{ url_for('meetings.serve_audio', filename=meeting.filename) }}" alt="Meeting board" style="max-height: 350px; max-width: 100%; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.5);">
+                        </a>
+                        <p class="text-muted mt-2 mb-0" style="font-size: 12px;"><i class="fa-solid fa-magnifying-glass-plus me-1"></i>Click image to expand</p>
+                    </div>
+                {% else %}
+                    <h6 class="text-muted mb-2" style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">Meeting Document / File</h6>
+                    <div class="d-flex align-items-center justify-content-between p-3" style="background: rgba(0, 0, 0, 0.2); border-radius: 12px; border: 1px solid var(--glass-border);">
+                        <div class="d-flex align-items-center">
+                            <i class="fa-solid fa-file-invoice text-info fs-2 me-3"></i>
+                            <div>
+                                <h6 class="text-white mb-1 fw-semibold">{{ meeting.filename }}</h6>
+                                <span class="text-muted" style="font-size: 12px;">Type: {{ meeting.filename.split('.')[-1] | upper }} File</span>
+                            </div>
+                        </div>
+                        <a href="{{ url_for('meetings.serve_audio', filename=meeting.filename) }}" target="_blank" class="btn btn-sm btn-glass-outline">
+                            <i class="fa-solid fa-file-arrow-down me-1.5"></i>Open File
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Left Column: Summary, Key Points, and Decisions -->
+    <div class="col-lg-7">
+        <!-- AI Executive Summary -->
+        <div class="card glass-card p-4 shadow-sm mb-4">
+            <h4 class="text-white mb-3 d-flex align-items-center">
+                <i class="fa-solid fa-wand-magic-sparkles text-info me-2"></i>Executive Summary
+            </h4>
+            <div class="text-light" style="line-height: 1.6; font-size: 15px;">
+                {{ meeting.summary | replace('\n', '<br>') | safe }}
+            </div>
+        </div>
+
+        <!-- Key Discussion Points -->
+        <div class="card glass-card p-4 shadow-sm mb-4">
+            <h4 class="text-white mb-3 d-flex align-items-center">
+                <i class="fa-regular fa-comments text-primary me-2"></i>Key Discussion Points
+            </h4>
+            {% if meeting.get_key_points_list() %}
+                <div class="d-flex flex-column gap-3 mb-0">
+                    {% for point in meeting.get_key_points_list() %}
+                        <div class="d-flex align-items-start text-light" style="font-size: 15px; line-height: 1.6;">
+                            <i class="fa-solid fa-circle-dot text-info me-3 mt-2" style="font-size: 8px; min-width: 10px;"></i>
+                            <span>{{ point }}</span>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p class="text-muted mb-0">No discussion points were extracted from this meeting.</p>
+            {% endif %}
+        </div>
+
+        <!-- Decisions Made -->
+        <div class="card glass-card p-4 shadow-sm">
+            <h4 class="text-white mb-3 d-flex align-items-center">
+                <i class="fa-solid fa-gavel text-violet me-2"></i>Decisions Reached
+            </h4>
+            {% if meeting.get_decisions_list() %}
+                <div class="d-flex flex-column gap-3 mb-0">
+                    {% for decision in meeting.get_decisions_list() %}
+                        <div class="d-flex align-items-start text-light" style="font-size: 15px; line-height: 1.6;">
+                            <i class="fa-solid fa-handshake text-success me-3 mt-1.5" style="font-size: 13px; min-width: 16px;"></i>
+                            <span>{{ decision }}</span>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p class="text-muted mb-0">No specific decisions were flagged in this meeting.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Right Column: Action Items, Transcript, and AI Chat Assistant -->
+    <div class="col-lg-5">
+        <div class="card glass-card shadow-sm d-flex flex-column h-100" style="min-height: 580px;">
+            <div class="card-header bg-transparent border-0 p-3 pb-0">
+                <ul class="nav nav-tabs nav-tabs-glass" id="assistantTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="tasks-tab" data-bs-toggle="tab" data-bs-target="#tasks-pane" type="button" role="tab" aria-controls="tasks-pane" aria-selected="true">
+                            <i class="fa-solid fa-list-check me-1.5"></i>Tasks
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="transcript-tab" data-bs-toggle="tab" data-bs-target="#transcript-pane" type="button" role="tab" aria-controls="transcript-pane" aria-selected="false">
+                            <i class="fa-regular fa-file-lines me-1.5"></i>Transcript
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="chat-tab" data-bs-toggle="tab" data-bs-target="#chat-pane" type="button" role="tab" aria-controls="chat-pane" aria-selected="false">
+                            <i class="fa-solid fa-comments text-info me-1.5"></i>AI Assistant
+                        </button>
+                    </li>
+                </ul>
+            </div>
+            
+            <div class="card-body tab-content flex-grow-1 p-3 d-flex flex-column overflow-hidden">
+                <!-- Tab 1: Action Items -->
+                <div class="tab-pane fade show active flex-grow-1 overflow-auto pe-1" id="tasks-pane" role="tabpanel" aria-labelledby="tasks-tab">
+                    <h5 class="text-white mb-3 mt-1 d-flex align-items-center">
+                        <i class="fa-solid fa-check-double text-success me-2"></i>Action Items
+                    </h5>
+                    {% if meeting.action_items %}
+                        <ul class="list-group list-group-flush mt-2">
+                            {% for task in meeting.action_items %}
+                                <li class="list-group-item list-group-item-glass px-0 py-3">
+                                    <div class="d-flex align-items-start">
+                                        <label class="action-checkbox-container mt-1">
+                                            <input type="checkbox" data-item-id="{{ task.id }}" {% if task.is_completed %}checked{% endif %}>
+                                            <span class="checkmark"></span>
+                                        </label>
+                                        <div class="ms-1 flex-grow-1">
+                                            <span class="action-text text-white" style="font-size: 14px;">{{ task.content }}</span>
+                                            <div class="mt-2 d-flex flex-wrap gap-2 align-items-center">
+                                                <span id="badge-task-{{ task.id }}" class="badge badge-MM {% if task.is_completed %}badge-MM-success{% else %}badge-MM-warning{% endif %}" style="font-size: 9px; padding: 3px 6px;">
+                                                    {% if task.is_completed %}Completed{% else %}Pending{% endif %}
+                                                </span>
+                                                {% if task.assignee and task.assignee != 'Unassigned' %}
+                                                    <span class="badge badge-MM badge-MM-primary" style="font-size: 9px; padding: 3px 6px; text-transform: none;">
+                                                        <i class="fa-regular fa-user me-1"></i>{{ task.assignee }}
+                                                    </span>
+                                                {% endif %}
+                                                {% if task.due_date and task.due_date != 'Unassigned' %}
+                                                    <span class="badge badge-MM badge-MM-warning" style="font-size: 9px; padding: 3px 6px; text-transform: none; background: rgba(245, 158, 11, 0.06); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.15);">
+                                                        <i class="fa-regular fa-clock me-1"></i>{{ task.due_date }}
+                                                    </span>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="text-muted mb-0">No action items were identified in this meeting.</p>
+                    {% endif %}
+                </div>
+                
+                <!-- Tab 2: Transcript -->
+                <div class="tab-pane fade flex-grow-1 overflow-auto pe-1" id="transcript-pane" role="tabpanel" aria-labelledby="transcript-tab">
+                    <h5 class="text-white mb-3 mt-1 d-flex align-items-center">
+                        <i class="fa-regular fa-file-lines text-muted me-2"></i>Transcript Log
+                    </h5>
+                    <div class="text-light" style="font-size: 14px; line-height: 1.65; white-space: pre-line;">
+                        {{ meeting.transcript }}
+                    </div>
+                </div>
+                
+                <!-- Tab 3: AI Chatbot Assistant -->
+                <div class="tab-pane fade flex-grow-1 d-flex flex-column overflow-hidden" id="chat-pane" role="tabpanel" aria-labelledby="chat-tab" style="height: 100%;">
+                    <h5 class="text-white mb-2 mt-1 d-flex align-items-center">
+                        <i class="fa-solid fa-brain text-info me-2"></i>Q&A Assistant
+                    </h5>
+                    
+                    <div class="chat-container flex-grow-1 d-flex flex-column overflow-hidden mt-2">
+                        <!-- Message log -->
+                        <div class="chat-messages" id="chat-messages-box">
+                            <div class="chat-message chat-message-bot">
+                                Hello! Ask me anything about this meeting's discussion, decisions, or follow-ups.
+                            </div>
+                        </div>
+                        
+                        <!-- Suggestion prompt chips -->
+                        <div class="chat-suggestion-chips" id="suggestion-chips">
+                            <button class="chip-btn" data-prompt="What decisions were made in this meeting?">What decisions were made?</button>
+                            <button class="chip-btn" data-prompt="Summarize the budget and expense details discussed.">Summarize budget</button>
+                            <button class="chip-btn" data-prompt="List the core action items and who owns them.">List action items</button>
+                        </div>
+                        
+                        <!-- Input row -->
+                        <div class="chat-input-area">
+                            <input type="text" id="chat-input-field" class="form-control form-control-glass bg-transparent border-0 text-white" placeholder="Ask a question..." autocomplete="off">
+                            <button type="button" id="chat-send-btn" class="btn btn-glow-secondary py-1 px-3 d-flex align-items-center justify-content-center">
+                                <i class="fa-solid fa-paper-plane"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteMeetingModal" tabindex="-1" aria-labelledby="deleteMeetingModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content glass-card border-danger shadow-lg" style="background: rgba(8, 9, 22, 0.95);">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title text-white" id="deleteMeetingModalLabel">Delete Meeting Permanently?</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-light">
+                <p>Are you sure you want to delete <strong>{{ meeting.title }}</strong>?</p>
+                <p class="text-danger mb-0" style="font-size: 14px;">
+                    <i class="fa-solid fa-triangle-exclamation me-1.5"></i>Warning: This action will permanently erase the meeting analysis, generated transcript, summaries, audio files, and all associated action items. This action cannot be undone.
+                </p>
+            </div>
+            <div class="modal-footer border-secondary">
+                <button type="button" class="btn btn-glass-outline btn-sm text-light" data-bs-dismiss="modal">Cancel</button>
+                <form action="{{ url_for('meetings.delete', meeting_id=meeting.id) }}" method="POST" class="d-inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-danger btn-sm px-3">Confirm Delete</button>
+                </form>
+            </div>
+        </div>
+</div>
+
+{% block scripts %}
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const sendBtn = document.getElementById("chat-send-btn");
+        const inputField = document.getElementById("chat-input-field");
+        const chatBox = document.getElementById("chat-messages-box");
+        const chips = document.querySelectorAll("#suggestion-chips .chip-btn");
+        
+        const meetingId = "{{ meeting.id }}";
+        const csrfToken = "{{ csrf_token() }}";
+        
+        function appendMessage(text, isUser) {
+            const msgDiv = document.createElement("div");
+            msgDiv.className = `chat-message ${isUser ? 'chat-message-user' : 'chat-message-bot'}`;
+            msgDiv.innerText = text;
+            chatBox.appendChild(msgDiv);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+        
+        function appendTypingIndicator() {
+            const loaderDiv = document.createElement("div");
+            loaderDiv.className = "chat-message chat-message-bot typing-loader";
+            loaderDiv.innerHTML = `
+                <div class="typing-indicator">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </div>
+            `;
+            chatBox.appendChild(loaderDiv);
+            chatBox.scrollTop = chatBox.scrollHeight;
+            return loaderDiv;
+        }
+        
+        function sendQuestion(questionText) {
+            if (!questionText.trim()) return;
+            
+            // Append User message
+            appendMessage(questionText, true);
+            inputField.value = "";
+            
+            // Append loader
+            const loader = appendTypingIndicator();
+            
+            fetch(`/meetings/${meetingId}/chat`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({ message: questionText })
+            })
+            .then(res => res.json())
+            .then(data => {
+                // Remove loader
+                loader.remove();
+                
+                if (data.success) {
+                    appendMessage(data.response, false);
+                } else {
+                    appendMessage("Error: " + data.message, false);
+                }
+            })
+            .catch(err => {
+                loader.remove();
+                console.error("Chat API error:", err);
+                appendMessage("Failed to connect to the assistant server.", false);
+            });
+        }
+        
+        // Button trigger
+        if (sendBtn) {
+            sendBtn.addEventListener("click", () => {
+                sendQuestion(inputField.value);
+            });
+        }
+        
+        // Enter key trigger
+        if (inputField) {
+            inputField.addEventListener("keypress", (e) => {
+                if (e.key === "Enter") {
+                    sendQuestion(inputField.value);
+                }
+            });
+        }
+        
+        // Suggestion chip trigger
+        chips.forEach(chip => {
+            chip.addEventListener("click", function() {
+                sendQuestion(this.dataset.prompt);
+            });
+        });
+    });
+</script>
+{% endblock %}
+{% endblock %}
