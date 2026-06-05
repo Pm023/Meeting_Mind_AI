@@ -16,8 +16,13 @@ class Config:
     IS_VERCEL = "VERCEL" in os.environ
     
     # SQLAlchemy config
-    DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///meetingmind.db")
-    if DATABASE_URL.startswith("sqlite:///"):
+    DATABASE_URL = os.getenv("DATABASE_URL", "")
+    
+    # Standardize postgres dialect (SQLAlchemy requires postgresql:// instead of postgres://)
+    if DATABASE_URL.startswith("postgres://"):
+        DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+        
+    if not DATABASE_URL or DATABASE_URL.startswith("sqlite:///"):
         if IS_VERCEL:
             instance_dir = Path("/tmp/instance")
         else:
