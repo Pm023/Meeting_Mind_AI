@@ -1,5 +1,6 @@
-instance/
+instance/*
 *.db
+!instance/meetingmind_demo.db
 .env
 __pycache__/
 app/__pycache__/

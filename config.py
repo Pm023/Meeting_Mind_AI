@@ -29,7 +29,20 @@ class Config:
             instance_dir = BASE_DIR / "instance"
         
         instance_dir.mkdir(exist_ok=True)
-        SQLALCHEMY_DATABASE_URI = f"sqlite:///{instance_dir / 'meetingmind.db'}"
+        
+        db_path = instance_dir / "meetingmind.db"
+        
+        # Copy demo database as template on serverless cold starts
+        if IS_VERCEL and not db_path.exists():
+            demo_template = BASE_DIR / "instance" / "meetingmind_demo.db"
+            if demo_template.exists():
+                import shutil
+                try:
+                    shutil.copy2(demo_template, db_path)
+                except Exception:
+                    pass
+                    
+        SQLALCHEMY_DATABASE_URI = f"sqlite:///{db_path}"
     else:
         SQLALCHEMY_DATABASE_URI = DATABASE_URL
     
