@@ -109,7 +109,7 @@
                         <div class="upload-dropzone" onclick="document.getElementById('file-input').click()">
                             <i class="fa-solid fa-cloud-arrow-up text-info fs-1 mb-3"></i>
                             <h5 class="text-white" id="file-label">Click to select file</h5>
-                            <p class="text-muted mb-0" style="font-size: 13px;">Supports Audio, Video, PDF, TXT, and Images (Max 16MB)</p>
+                            <p class="text-muted mb-0" style="font-size: 13px;">Supports Audio, Video, PDF, TXT, and Images (Max 4.5 MB due to Vercel Serverless limits)</p>
                             
                             <!-- Hidden input field -->
                             {% if form.file.errors %}
@@ -123,11 +123,16 @@
                                 {{ form.file(class="d-none", id="file-input") }}
                             {% endif %}
                         </div>
+                        
+                        <!-- Client-side size validation error container -->
+                        <div id="size-error-msg" class="text-danger mt-3 text-center d-none" style="font-size: 14px; font-weight: 500;">
+                            <i class="fa-solid fa-triangle-exclamation me-1.5"></i> File size exceeds the Vercel Serverless payload limit (4.5 MB).
+                        </div>
                     </div>
                     
                     <!-- Submit button -->
                     <div class="d-grid">
-                        {{ form.submit(class="btn btn-glow-primary py-3 fs-5") }}
+                        {{ form.submit(class="btn btn-glow-primary py-3 fs-5", id="upload-submit-btn") }}
                     </div>
                 </form>
             </div>
@@ -143,25 +148,70 @@
         const fileLabel = document.getElementById("file-label");
         const form = document.getElementById("upload-form");
         const loadingOverlay = document.getElementById("loading-overlay");
+        const sizeError = document.getElementById("size-error-msg");
+        const submitBtn = document.getElementById("upload-submit-btn");
 
-        // Update display text when file is selected
+        // Update display text when file is selected and check size limit
         if (fileInput) {
             fileInput.addEventListener("change", function(e) {
                 if (this.files && this.files.length > 0) {
-                    fileLabel.innerText = this.files[0].name;
-                    fileLabel.classList.add("text-info");
+                    const file = this.files[0];
+                    const maxVercelLimit = 4.5 * 1024 * 1024; // 4.5 MB in bytes
+                    
+                    fileLabel.innerText = file.name;
+                    
+                    if (file.size > maxVercelLimit) {
+                        fileLabel.classList.remove("text-info");
+                        fileLabel.classList.add("text-danger");
+                        if (sizeError) {
+                            sizeError.innerHTML = `<i class="fa-solid fa-triangle-exclamation me-1.5"></i> File size (${(file.size / (1024 * 1024)).toFixed(2)} MB) exceeds the Vercel Serverless payload limit (4.5 MB). Please select a smaller recording.`;
+                            sizeError.classList.remove("d-none");
+                        }
+                        if (submitBtn) {
+                            submitBtn.disabled = true;
+                            submitBtn.classList.add("opacity-50");
+                            submitBtn.style.cursor = "not-allowed";
+                        }
+                    } else {
+                        fileLabel.classList.remove("text-danger");
+                        fileLabel.classList.add("text-info");
+                        if (sizeError) {
+                            sizeError.classList.add("d-none");
+                        }
+                        if (submitBtn) {
+                            submitBtn.disabled = false;
+                            submitBtn.classList.remove("opacity-50");
+                            submitBtn.style.cursor = "pointer";
+                        }
+                    }
                 } else {
-                    fileLabel.innerText = "Click to select audio file";
-                    fileLabel.classList.remove("text-info");
+                    fileLabel.innerText = "Click to select file";
+                    fileLabel.classList.remove("text-info", "text-danger");
+                    if (sizeError) {
+                        sizeError.classList.add("d-none");
+                    }
+                    if (submitBtn) {
+                        submitBtn.disabled = false;
+                        submitBtn.classList.remove("opacity-50");
+                        submitBtn.style.cursor = "pointer";
+                    }
                 }
             });
         }
 
-        // Show spinner on submit
+        // Show spinner on submit (if validation passes)
         if (form) {
             form.addEventListener("submit", function(e) {
                 if (fileInput && fileInput.files.length > 0) {
-                    // Title and file checks should be valid before showing loader
+                    const file = fileInput.files[0];
+                    const maxVercelLimit = 4.5 * 1024 * 1024;
+                    
+                    // Extra safety check in form submit
+                    if (file.size > maxVercelLimit) {
+                        e.preventDefault();
+                        return;
+                    }
+                    
                     const titleVal = document.querySelector("input[name='title']").value;
                     if (titleVal.trim().length >= 3) {
                         loadingOverlay.style.display = "flex";
